@@ -1,0 +1,1941 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LexiFlow - 現代背單字學習 App</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Noto Sans TC -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 3D 翻卡動畫專用樣式 */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+        /* 自訂捲軸 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.8);
+        }
+        /* 震動動畫 (答錯提示) */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+        .animate-shake {
+            animation: shake 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+    <!-- 頂部導覽列 -->
+    <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <!-- Logo -->
+            <div class="flex items-center gap-2.5 cursor-pointer" onclick="switchTab('flashcards')">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                </div>
+                <span class="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-500 dark:from-indigo-400 dark:to-violet-400">LexiFlow</span>
+            </div>
+
+            <!-- 導覽分頁 (桌面版) -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-700/50 p-1 rounded-xl">
+                <button onclick="switchTab('flashcards')" id="nav-flashcards" class="nav-btn px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+                    <i data-lucide="layers" class="w-4 h-4"></i> 單字卡學習
+                </button>
+                <button onclick="switchTab('quiz')" id="nav-quiz" class="nav-btn px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+                    <i data-lucide="brain-circuit" class="w-4 h-4"></i> 隨堂測驗
+                </button>
+                <button onclick="switchTab('ai-practice')" id="nav-ai-practice" class="nav-btn px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-indigo-500"></i> AI 實戰練習
+                </button>
+                <button onclick="switchTab('manage')" id="nav-manage" class="nav-btn px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+                    <i data-lucide="library" class="w-4 h-4"></i> 單字庫管理
+                </button>
+            </nav>
+
+            <!-- 右側功能按鈕 -->
+            <div class="flex items-center gap-2">
+                <button onclick="toggleTheme()" class="p-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="切換深色/淺色模式">
+                    <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 手機版底部固定導覽列 -->
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-around p-2 z-40 pb-safe">
+            <button onclick="switchTab('flashcards')" id="mob-nav-flashcards" class="mob-nav-btn flex flex-col items-center gap-1 p-2 rounded-xl text-xs font-medium w-full">
+                <i data-lucide="layers" class="w-5 h-5"></i> 單字卡
+            </button>
+            <button onclick="switchTab('quiz')" id="mob-nav-quiz" class="mob-nav-btn flex flex-col items-center gap-1 p-2 rounded-xl text-xs font-medium w-full">
+                <i data-lucide="brain-circuit" class="w-5 h-5"></i> 測驗
+            </button>
+            <button onclick="switchTab('ai-practice')" id="mob-nav-ai-practice" class="mob-nav-btn flex flex-col items-center gap-1 p-2 rounded-xl text-xs font-medium w-full">
+                <i data-lucide="sparkles" class="w-5 h-5 text-indigo-500"></i> AI 實戰
+            </button>
+            <button onclick="switchTab('manage')" id="mob-nav-manage" class="mob-nav-btn flex flex-col items-center gap-1 p-2 rounded-xl text-xs font-medium w-full">
+                <i data-lucide="library" class="w-5 h-5"></i> 單字庫
+            </button>
+        </nav>
+    </header>
+
+    <!-- 主內容區 -->
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 pt-6 pb-24 md:pb-12">
+        
+        <!-- 學習進度儀表板 -->
+        <section class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80 mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">學習進度總覽</h2>
+                    <div class="flex items-baseline gap-3 mt-1">
+                        <span class="text-2xl font-bold text-slate-900 dark:text-white"><span id="stat-mastered">0</span> / <span id="stat-total">0</span></span>
+                        <span class="text-sm text-slate-500 dark:text-slate-400">個單字已掌握</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 text-sm">
+                    <div class="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded-lg font-medium">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        需複習: <span id="stat-review">0</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-lg font-medium">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        掌握率: <span id="stat-rate">0%</span>
+                    </div>
+                </div>
+            </div>
+            <!-- 進度條 -->
+            <div class="w-full h-2.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div id="stat-progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </section>
+
+        <!-- ==================== 分頁 1：單字卡學習模式 ==================== -->
+        <section id="tab-flashcards" class="tab-content block">
+            <!-- 控制列：篩選與進度 -->
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <div class="inline-flex bg-slate-200/70 dark:bg-slate-800 p-1 rounded-xl">
+                    <button onclick="setFlashcardFilter('all')" id="filter-all" class="px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all bg-white dark:bg-slate-700 shadow-sm text-indigo-600 dark:text-indigo-400">
+                        全部單字
+                    </button>
+                    <button onclick="setFlashcardFilter('unmastered')" id="filter-unmastered" class="px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                        僅複習不熟單字
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button onclick="shuffleFlashcards()" class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                        <i data-lucide="shuffle" class="w-4 h-4"></i> 隨機洗牌
+                    </button>
+                    <span id="fc-counter" class="text-sm font-semibold text-slate-500 dark:text-slate-400 bg-slate-200/60 dark:bg-slate-800 px-3 py-1.5 rounded-xl">
+                        1 / 10
+                    </span>
+                </div>
+            </div>
+
+            <!-- 單字卡主體容器 -->
+            <div id="fc-container" class="max-w-2xl mx-auto">
+                <!-- 3D 翻轉卡片 -->
+                <div class="perspective-1000 w-full h-96 sm:h-[26rem] cursor-pointer select-none group" onclick="flipCard()">
+                    <div id="flashcard-inner" class="relative w-full h-full transition-transform duration-500 transform-style-3d">
+                        
+                        <!-- 卡片正面 (英文單字) -->
+                        <div class="absolute inset-0 backface-hidden bg-white dark:bg-slate-800 rounded-3xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-200 dark:border-slate-700 p-6 sm:p-10 flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span id="fc-badge-front" class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                                    需複習
+                                </span>
+                                <button onclick="event.stopPropagation(); speakCurrentWord()" class="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-transform active:scale-95" title="朗讀單字">
+                                    <i data-lucide="volume-2" class="w-6 h-6"></i>
+                                </button>
+                            </div>
+
+                            <div class="text-center my-auto">
+                                <h1 id="fc-word" class="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-white tracking-tight mb-3">
+                                    Serendipity
+                                </h1>
+                                <div class="flex items-center justify-center gap-2 text-slate-500 dark:text-slate-400">
+                                    <span id="fc-phonetic" class="text-lg font-mono">/ˌser.ənˈdɪp.ə.t̬i/</span>
+                                    <span id="fc-pos" class="px-2 py-0.5 text-xs font-semibold rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">n.</span>
+                                </div>
+                            </div>
+
+                            <div class="text-center text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
+                                <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> 點擊卡片或按 <kbd class="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded border border-slate-300 dark:border-slate-600 font-sans">Space</kbd> 查看釋義
+                            </div>
+                        </div>
+
+                        <!-- 卡片背面 (中文釋義與例句) -->
+                        <div class="absolute inset-0 backface-hidden rotate-y-180 bg-gradient-to-br from-indigo-50/50 to-white dark:from-slate-800 dark:to-slate-800/95 rounded-3xl shadow-lg shadow-slate-200/50 dark:shadow-none border-2 border-indigo-500/30 dark:border-indigo-500/40 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto">
+                            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+                                <div>
+                                    <span id="fc-word-back" class="text-xl font-bold text-indigo-600 dark:text-indigo-400">Serendipity</span>
+                                    <span id="fc-pos-back" class="ml-2 text-xs font-semibold px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">n.</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="event.stopPropagation(); triggerCardAIDeepDive()" id="fc-ai-btn" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all active:scale-95">
+                                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> AI 記憶秘訣與同義詞
+                                    </button>
+                                    <button onclick="event.stopPropagation(); speakCurrentWord()" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 transition-colors" title="朗讀單字">
+                                        <i data-lucide="volume-2" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="my-auto py-3">
+                                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">中文釋義</div>
+                                <p id="fc-meaning" class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-4">
+                                    意外發現珍奇事物的本領；機緣湊巧
+                                </p>
+
+                                <div class="bg-slate-100/80 dark:bg-slate-700/50 rounded-2xl p-3.5 relative">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">實用例句</span>
+                                        <button onclick="event.stopPropagation(); speakCurrentExample()" class="flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+                                            <i data-lucide="volume-1" class="w-4 h-4"></i> 朗讀例句
+                                        </button>
+                                    </div>
+                                    <p id="fc-example" class="text-sm sm:text-base text-slate-700 dark:text-slate-200 leading-relaxed italic">
+                                        "Finding that rare book in a tiny village shop was pure serendipity."
+                                    </p>
+                                </div>
+
+                                <!-- 預設記憶秘訣提示 (若有) -->
+                                <div id="fc-mnemonic-preview" class="hidden mt-3 text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-900/30 px-3.5 py-2 rounded-xl border border-indigo-200/60 dark:border-indigo-700/50 flex items-start gap-2">
+                                    <i data-lucide="lightbulb" class="w-4 h-4 shrink-0 mt-0.5 text-amber-500"></i>
+                                    <span id="fc-mnemonic-text"></span>
+                                </div>
+                            </div>
+
+                            <div class="text-center text-xs text-slate-400 dark:text-slate-500">
+                                點擊卡片翻回正面
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- AI 深度解析展開抽屜 (位於單字卡正下方) -->
+                <div id="fc-ai-drawer" class="hidden mt-4 bg-white dark:bg-slate-800 rounded-3xl p-5 sm:p-6 border border-indigo-200 dark:border-indigo-800/60 shadow-sm transition-all">
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
+                        <div class="flex items-center gap-2 font-bold text-indigo-600 dark:text-indigo-400 text-sm">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i> Gemini AI 深度記憶教練
+                        </div>
+                        <button onclick="closeCardAIDrawer()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div id="fc-ai-content" class="text-sm text-slate-700 dark:text-slate-200 space-y-3 leading-relaxed">
+                        <!-- 動態填入 AI 解析內容 -->
+                    </div>
+                </div>
+
+                <!-- 卡片下方操作按鈕區 -->
+                <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <!-- 上一張 / 下一張 -->
+                    <div class="flex items-center gap-2 w-full sm:w-auto justify-center">
+                        <button onclick="prevCard()" class="flex-1 sm:flex-initial px-4 py-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium flex items-center justify-center gap-1 transition-all active:scale-95">
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i> 上一個
+                        </button>
+                        <button onclick="nextCard()" class="flex-1 sm:flex-initial px-4 py-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium flex items-center justify-center gap-1 transition-all active:scale-95">
+                            下一個 <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- 熟悉度標記按鈕 -->
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <button onclick="markWordStatus(false)" class="flex-1 sm:flex-initial px-5 py-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold flex items-center justify-center gap-2 transition-all active:scale-95">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 不熟 / 需複習
+                        </button>
+                        <button onclick="markWordStatus(true)" class="flex-1 sm:flex-initial px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 font-semibold flex items-center justify-center gap-2 transition-all active:scale-95">
+                            <i data-lucide="check-circle-2" class="w-4 h-4"></i> 已掌握
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 空狀態提示 (當篩選無單字時) -->
+            <div id="fc-empty" class="hidden text-center py-16 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700">
+                <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="party-popper" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">太棒了！沒有需要複習的單字</h3>
+                <p class="text-slate-500 dark:text-slate-400 mb-6">您已經掌握了目前篩選條件下的所有單字。</p>
+                <button onclick="setFlashcardFilter('all')" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors">
+                    查看全部單字
+                </button>
+            </div>
+        </section>
+
+        <!-- ==================== 分頁 2：小測驗模式 ==================== -->
+        <section id="tab-quiz" class="tab-content hidden max-w-2xl mx-auto">
+            
+            <!-- 測驗設定畫面 -->
+            <div id="quiz-setup" class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-700">
+                <div class="text-center mb-8">
+                    <div class="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="brain-circuit" class="w-7 h-7"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">隨堂單字測驗</h2>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">選擇測驗模式以檢驗您的學習成效</p>
+                </div>
+
+                <div class="space-y-4 mb-8">
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300">選擇測驗題型：</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <button onclick="selectQuizType('en-to-zh')" id="qtype-en-to-zh" class="qtype-btn p-4 rounded-2xl border-2 border-indigo-600 bg-indigo-50/50 dark:bg-indigo-900/20 text-left transition-all">
+                            <div class="font-bold text-indigo-600 dark:text-indigo-400 mb-1">英選中</div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400">看英文單字，選出正確中文釋義</div>
+                        </button>
+                        <button onclick="selectQuizType('zh-to-en')" id="qtype-zh-to-en" class="qtype-btn p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-300 text-left transition-all">
+                            <div class="font-bold text-slate-800 dark:text-slate-200 mb-1">中選英</div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400">看中文釋義，選出正確英文單字</div>
+                        </button>
+                        <button onclick="selectQuizType('spelling')" id="qtype-spelling" class="qtype-btn p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-300 text-left transition-all">
+                            <div class="font-bold text-slate-800 dark:text-slate-200 mb-1">拼字測驗</div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400">聽發音與看中文，完整拼出單字</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-700/40 p-4 rounded-2xl mb-6">
+                    <span class="text-sm font-medium text-slate-700 dark:text-slate-300">測驗範圍</span>
+                    <select id="quiz-scope" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="all">全部單字 (最多 10 題)</option>
+                        <option value="unmastered">僅測驗不熟單字</option>
+                    </select>
+                </div>
+
+                <button onclick="startQuiz()" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/25 transition-all active:scale-[0.99]">
+                    開始測驗
+                </button>
+            </div>
+
+            <!-- 測驗進行中畫面 -->
+            <div id="quiz-active" class="hidden bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-700">
+                <!-- 頂部狀態列 -->
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
+                    <div class="flex items-center gap-3">
+                        <span id="quiz-progress-text" class="text-sm font-bold text-slate-500 dark:text-slate-400">第 1 / 10 題</span>
+                        <span id="quiz-streak-badge" class="hidden px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400 flex items-center gap-1">
+                            🔥 連對 <span id="quiz-streak">0</span>
+                        </span>
+                    </div>
+                    <button onclick="quitQuiz()" class="text-xs font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                        結束測驗
+                    </button>
+                </div>
+
+                <!-- 題目區 -->
+                <div class="text-center my-6">
+                    <div id="quiz-prompt-label" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-2">請選出正確的中文釋義</div>
+                    <div class="flex items-center justify-center gap-3">
+                        <h3 id="quiz-question" class="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">Ephemeral</h3>
+                        <button id="quiz-audio-btn" onclick="speakQuizWord()" class="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors" title="播放發音">
+                            <i data-lucide="volume-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <p id="quiz-sub-hint" class="text-sm text-slate-400 font-mono mt-1">/ɪˈfem.ər.əl/</p>
+                </div>
+
+                <!-- 四選一選項區 -->
+                <div id="quiz-options-container" class="grid grid-cols-1 gap-3 mt-8">
+                    <!-- 動態生成選項按鈕 -->
+                </div>
+
+                <!-- 拼字輸入區 -->
+                <div id="quiz-spelling-container" class="hidden mt-8">
+                    <div class="relative">
+                        <input type="text" id="quiz-spelling-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                            placeholder="請輸入英文單字..." 
+                            class="w-full text-center text-2xl font-bold tracking-wider py-4 px-6 rounded-2xl border-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:border-indigo-500 focus:outline-none transition-colors">
+                    </div>
+                    <div id="quiz-spelling-feedback" class="hidden mt-4 p-4 rounded-2xl text-center"></div>
+                    <button id="quiz-spelling-submit" onclick="checkSpellingAnswer()" class="w-full mt-4 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-colors">
+                        送出答案
+                    </button>
+                </div>
+
+                <!-- 下一題按鈕 (答題後顯示) -->
+                <div id="quiz-next-container" class="hidden mt-6 pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+                    <button onclick="nextQuizQuestion()" class="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2">
+                        下一題 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 測驗結果結算畫面 -->
+            <div id="quiz-result" class="hidden bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-700 text-center">
+                <div class="w-20 h-20 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="award" class="w-10 h-10"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">測驗完成！</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">以下是本次的測驗成績結算</p>
+
+                <div class="grid grid-cols-3 gap-4 max-w-md mx-auto mb-8">
+                    <div class="bg-slate-50 dark:bg-slate-700/40 p-4 rounded-2xl">
+                        <div class="text-xs text-slate-400 mb-1">總得分</div>
+                        <div id="res-score" class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">80%</div>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-700/40 p-4 rounded-2xl">
+                        <div class="text-xs text-slate-400 mb-1">答對題數</div>
+                        <div id="res-correct" class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">8 / 10</div>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-700/40 p-4 rounded-2xl">
+                        <div class="text-xs text-slate-400 mb-1">最高連對</div>
+                        <div id="res-streak" class="text-2xl font-bold text-orange-500">5</div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button onclick="resetQuizUI()" class="px-6 py-3 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                        返回設定
+                    </button>
+                    <button onclick="startQuiz()" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md shadow-indigo-600/20 transition-colors">
+                        再測驗一次
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 分頁 3：AI 實戰練習 ==================== -->
+        <section id="tab-ai-practice" class="tab-content hidden space-y-6">
+            <!-- 區塊 A：AI 單字串燒故事 (Story Weaver) -->
+            <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-700">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 mb-2">
+                            <i data-lucide="book-open-check" class="w-3.5 h-3.5"></i> 情境閱讀記憶
+                        </div>
+                        <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">AI 單字串燒故事 (Story Weaver)</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">自動從單字庫挑選 5–8 個單字（優先挑選「需複習」單字），編寫生動短文幫助語境記憶。</p>
+                    </div>
+                    <button onclick="generateAIStory()" id="btn-gen-story" class="shrink-0 px-5 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-semibold rounded-2xl shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all active:scale-95">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i> 生成專屬短文
+                    </button>
+                </div>
+
+                <!-- 挑選的目標單字標籤列 -->
+                <div id="story-target-words" class="hidden flex flex-wrap items-center gap-2 mb-5 p-3.5 bg-slate-50 dark:bg-slate-700/40 rounded-2xl">
+                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1">本篇包含單字：</span>
+                    <!-- 動態生成標籤 -->
+                </div>
+
+                <!-- 故事載入中狀態 -->
+                <div id="story-loading" class="hidden py-12 text-center">
+                    <div class="inline-block w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Gemini 正在為您編織專屬英文故事...</p>
+                </div>
+
+                <!-- 故事顯示區 -->
+                <div id="story-result-box" class="hidden space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+                        <h3 id="story-title" class="text-lg font-bold text-indigo-600 dark:text-indigo-400">The Serendipitous Journey</h3>
+                        <div class="flex items-center gap-2">
+                            <button onclick="speakStory()" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-indigo-600 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+                                <i data-lucide="volume-2" class="w-4 h-4"></i> 朗讀全文
+                            </button>
+                            <button onclick="toggleStoryTranslation()" class="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+                                <i data-lucide="languages" class="w-4 h-4"></i> 顯示/隱藏中譯
+                            </button>
+                        </div>
+                    </div>
+                    <p id="story-en-content" class="text-base sm:text-lg text-slate-800 dark:text-slate-100 leading-relaxed"></p>
+                    <div id="story-zh-box" class="hidden p-4 rounded-2xl bg-slate-50 dark:bg-slate-700/40 border border-slate-200/60 dark:border-slate-600/60">
+                        <div class="text-xs font-semibold text-slate-400 mb-1">繁體中文翻譯</div>
+                        <p id="story-zh-content" class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 區塊 B：AI 造句教練 (Sentence Coach) -->
+            <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-700">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 mb-2">
+                            <i data-lucide="pen-tool" class="w-3.5 h-3.5"></i> 主動輸出訓練
+                        </div>
+                        <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">AI 造句教練 (Sentence Coach)</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">使用指定單字練習造句，讓 Gemini 為您批改文法、自然度並提供母語人士升級版例句。</p>
+                    </div>
+                    <button onclick="pickRandomCoachWord()" class="shrink-0 px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> 換一個單字
+                    </button>
+                </div>
+
+                <!-- 題目單字卡片 -->
+                <div class="bg-gradient-to-r from-slate-50 to-indigo-50/40 dark:from-slate-700/50 dark:to-indigo-900/20 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-700 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <span class="text-xs font-semibold text-slate-400 uppercase">請使用以下單字造句：</span>
+                        <div class="flex items-baseline gap-2.5 mt-1">
+                            <span id="coach-word" class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">Resilient</span>
+                            <span id="coach-pos" class="text-xs px-2 py-0.5 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">adj.</span>
+                            <span id="coach-meaning" class="text-sm font-medium text-slate-700 dark:text-slate-200">有彈性的；適應力強的</span>
+                        </div>
+                    </div>
+                    <button onclick="speakCoachWord()" class="self-start sm:self-center p-2.5 rounded-xl bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm hover:scale-105 transition-transform" title="聆聽發音">
+                        <i data-lucide="volume-2" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- 造句輸入框 -->
+                <div class="space-y-3">
+                    <textarea id="coach-input" rows="3" placeholder="請在此輸入包含該單字的英文句子..." 
+                        class="w-full p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-base focus:border-indigo-500 focus:outline-none transition-colors"></textarea>
+                    <div class="flex justify-end">
+                        <button onclick="evaluateSentence()" id="btn-eval-sentence" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-2xl shadow-md shadow-indigo-600/20 flex items-center gap-2 transition-all active:scale-95">
+                            <i data-lucide="send" class="w-4 h-4"></i> 送出給 AI 批改
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 批改載入中 -->
+                <div id="coach-loading" class="hidden py-8 text-center">
+                    <div class="inline-block w-7 h-7 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">AI 教練正在仔細審閱您的句子...</p>
+                </div>
+
+                <!-- 批改結果區 -->
+                <div id="coach-feedback-box" class="hidden mt-6 p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-4">
+                    <!-- 動態填入批改結果 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 分頁 4：單字庫管理 ==================== -->
+        <section id="tab-manage" class="tab-content hidden">
+            <!-- 頂部工具列 -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <!-- 搜尋框 -->
+                <div class="relative flex-1 max-w-md">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="manage-search" oninput="renderWordList()" placeholder="搜尋英文單字或中文釋義..." 
+                        class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <!-- 新增與批次匯入按鈕 -->
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button onclick="openTopicPackModal()" class="px-4 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm flex items-center gap-2 transition-all active:scale-95">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i> AI 主題生字包
+                    </button>
+                    <button onclick="openBatchModal()" class="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl flex items-center gap-2 transition-colors">
+                        <i data-lucide="file-plus-2" class="w-4 h-4 text-indigo-500"></i> 批次匯入
+                    </button>
+                    <button onclick="openWordModal()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20 flex items-center gap-2 transition-colors">
+                        <i data-lucide="plus" class="w-4 h-4"></i> 新增單字
+                    </button>
+                </div>
+            </div>
+
+            <!-- 單字列表 -->
+            <div id="word-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- 動態渲染單字卡片 -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==================== Modal 1：新增 / 編輯單字 (含 AI 自動補全) ==================== -->
+    <div id="word-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700 animate-fade-in max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-5">
+                <h3 id="modal-title" class="text-xl font-bold text-slate-900 dark:text-white">新增單字</h3>
+                <button onclick="closeWordModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="word-form" onsubmit="saveWord(event)" class="space-y-4">
+                <input type="hidden" id="edit-word-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">英文單字 *</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="input-word" required placeholder="例如: Resilient" 
+                            class="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button type="button" onclick="autoFillWordWithAI()" id="btn-ai-autofill" class="shrink-0 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all active:scale-95">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> AI 自動補全
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">詞性</label>
+                        <select id="input-pos" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="n.">n. 名詞</option>
+                            <option value="v.">v. 動詞</option>
+                            <option value="adj.">adj. 形容詞</option>
+                            <option value="adv.">adv. 副詞</option>
+                            <option value="phr.">phr. 片語</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">音標 (IPA)</label>
+                        <input type="text" id="input-phonetic" placeholder="例如: /rɪˈzɪl.jənt/" 
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">中文釋義 *</label>
+                    <input type="text" id="input-meaning" required placeholder="例如: 有彈性的；適應力強的" 
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">英文例句與翻譯 (選填)</label>
+                    <textarea id="input-example" rows="2" placeholder="輸入包含此單字的英文例句..." 
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">AI 聯想記憶秘訣 (選填)</label>
+                    <input type="text" id="input-mnemonic" placeholder="例如: 諧音或字根記憶法..." 
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+                    <button type="button" onclick="closeWordModal()" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">
+                        取消
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
+                        儲存單字
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== Modal 2：批次匯入 ==================== -->
+    <div id="batch-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white">批次匯入單字</h3>
+                <button onclick="closeBatchModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3 leading-relaxed">
+                請依照 <code class="bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400">單字 | 中文釋義 | 例句(選填)</code> 的格式貼上，每行一筆資料：
+            </p>
+            <textarea id="batch-input" rows="6" placeholder="ambitious | 有野心的；雄心勃勃的 | She is an ambitious young lawyer.&#10;pragmatic | 務實的；實用主義的 | We need a pragmatic approach to solve this problem." 
+                class="w-full p-3.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4"></textarea>
+            
+            <div class="flex justify-end gap-3">
+                <button onclick="closeBatchModal()" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">
+                    取消
+                </button>
+                <button onclick="processBatchImport()" class="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white">
+                    開始匯入
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== Modal 3：AI 主題生字包生成器 ==================== -->
+    <div id="topic-pack-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700 max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 dark:text-white">AI 主題生字包生成器</h3>
+                </div>
+                <button onclick="closeTopicPackModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 mb-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">輸入主題或程度</label>
+                    <div class="flex flex-col sm:flex-row gap-2.5">
+                        <input type="text" id="topic-input" placeholder="例如：商用英文會議、多益高頻單字、咖啡廳點餐..." 
+                            class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <select id="topic-count" class="px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="5">生成 5 個單字</option>
+                            <option value="8">生成 8 個單字</option>
+                            <option value="10">生成 10 個單字</option>
+                        </select>
+                        <button onclick="generateTopicPack()" id="btn-gen-topic" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="wand-2" class="w-4 h-4"></i> 立即生成
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 快速主題標籤 -->
+                <div class="flex flex-wrap gap-1.5">
+                    <span class="text-xs text-slate-400 py-1">熱門推薦：</span>
+                    <button type="button" onclick="setTopicPreset('商用英文會議')" class="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:text-indigo-600 transition-colors">商用英文會議</button>
+                    <button type="button" onclick="setTopicPreset('多益高頻單字')" class="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:text-indigo-600 transition-colors">多益高頻單字</button>
+                    <button type="button" onclick="setTopicPreset('咖啡廳點餐與飲食')" class="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:text-indigo-600 transition-colors">咖啡廳點餐</button>
+                    <button type="button" onclick="setTopicPreset('旅遊機場與飯店')" class="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:text-indigo-600 transition-colors">旅遊機場</button>
+                    <button type="button" onclick="setTopicPreset('GRE 進階核心詞彙')" class="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:text-indigo-600 transition-colors">GRE 進階詞彙</button>
+                </div>
+            </div>
+
+            <!-- 載入中狀態 -->
+            <div id="topic-loading" class="hidden py-12 text-center">
+                <div class="inline-block w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Gemini 正在為您精選主題單字與例句...</p>
+            </div>
+
+            <!-- 預覽生成結果列表 -->
+            <div id="topic-preview-container" class="hidden flex-1 overflow-y-auto space-y-2.5 pr-1 my-2 border-t border-b border-slate-100 dark:border-slate-700 py-3">
+                <!-- 動態生成預覽項目 -->
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="closeTopicPackModal()" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">
+                    關閉
+                </button>
+                <button onclick="importGeneratedTopicPack()" id="btn-import-topic" class="hidden px-5 py-2 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5">
+                    <i data-lucide="download" class="w-4 h-4"></i> 全部加入單字庫 (<span id="topic-gen-count">0</span>)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自訂 Toast 通知元件 (取代 alert) -->
+    <div id="toast" class="fixed bottom-20 md:bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-3 rounded-2xl shadow-lg flex items-center gap-2.5 text-sm font-medium">
+            <i data-lucide="info" class="w-4 h-4 text-indigo-400 dark:text-indigo-600"></i>
+            <span id="toast-msg">提示訊息</span>
+        </div>
+    </div>
+
+    <!-- 應用程式核心邏輯 -->
+    <script>
+        // ==================== 0. Gemini API 核心呼叫工具 ====================
+        const GEMINI_MODEL = 'gemini-3-flash-preview';
+        const apiKey = ""; // 執行環境將自動注入 API Key
+
+        async function callGeminiAPI(prompt, systemInstruction = "", responseSchema = null) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }]
+            };
+
+            if (systemInstruction) {
+                payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+            }
+
+            if (responseSchema) {
+                payload.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: responseSchema
+                };
+            }
+
+            // 指數退避重試機制 (Exponential Backoff)
+            const delays = [1000, 2000, 4000];
+            for (let attempt = 0; attempt <= delays.length; attempt++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP Error: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!text) throw new Error("Empty response from Gemini");
+
+                    return responseSchema ? JSON.parse(text) : text;
+                } catch (err) {
+                    if (attempt === delays.length) {
+                        throw err;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+                }
+            }
+        }
+
+        // ==================== 1. 初始內建單字資料 ====================
+        const DEFAULT_WORDS = [
+            { id: '1', word: 'Serendipity', phonetic: '/ˌser.ənˈdɪp.ə.t̬i/', pos: 'n.', meaning: '意外發現珍奇事物的本領；機緣湊巧', example: 'Finding that rare book in a tiny village shop was pure serendipity.', mastered: false },
+            { id: '2', word: 'Ephemeral', phonetic: '/ɪˈfem.ər.əl/', pos: 'adj.', meaning: '短暫的；朝生暮死的；瞬息的', example: 'Fame in the world of pop music is often ephemeral.', mastered: false },
+            { id: '3', word: 'Resilient', phonetic: '/rɪˈzɪl.jənt/', pos: 'adj.', meaning: '有彈性的；能迅速恢復的；適應力強的', example: 'Children are often very resilient and adapt quickly to new environments.', mastered: true },
+            { id: '4', word: 'Ubiquitous', phonetic: '/juːˈbɪk.wə.t̬əs/', pos: 'adj.', meaning: '無所不在的；普遍存在的', example: 'Smartphones have become ubiquitous in modern society.', mastered: false },
+            { id: '5', word: 'Eloquent', phonetic: '/ˈel.ə.kwənt/', pos: 'adj.', meaning: '雄辯的；有口才的；動人的', example: 'She gave an eloquent speech that moved the entire audience.', mastered: false },
+            { id: '6', word: 'Meticulous', phonetic: '/məˈtɪk.jə.ləs/', pos: 'adj.', meaning: '一絲不苟的；極其仔細的', example: 'He is meticulous about keeping accurate financial records.', mastered: true },
+            { id: '7', word: 'Alleviate', phonetic: '/əˈliː.vi.eɪt/', pos: 'v.', meaning: '減輕；緩和；緩解', example: 'The new medicine helped to alleviate her chronic pain.', mastered: false },
+            { id: '8', word: 'Inevitable', phonetic: '/ˌɪnˈev.ə.t̬ə.bəl/', pos: 'adj.', meaning: '不可避免的；必然發生的', example: 'With so many cars on the road, traffic jams are inevitable.', mastered: false },
+            { id: '9', word: 'Profound', phonetic: '/prəˈfaʊnd/', pos: 'adj.', meaning: '深刻的；深遠的；淵博的', example: 'The book had a profound impact on my philosophy of life.', mastered: false },
+            { id: '10', word: 'Catalyst', phonetic: '/ˈkæt̬.əl.ɪst/', pos: 'n.', meaning: '催化劑；促成因素', example: 'The new policy acted as a catalyst for economic growth.', mastered: false }
+        ];
+
+        // ==================== 2. 狀態管理 ====================
+        let words = [];
+        let currentTab = 'flashcards';
+        
+        // 單字卡狀態
+        let fcFilter = 'all'; // 'all' | 'unmastered'
+        let fcList = [];
+        let fcIndex = 0;
+        let isFlipped = false;
+
+        // 測驗狀態
+        let quizType = 'en-to-zh'; // 'en-to-zh' | 'zh-to-en' | 'spelling'
+        let quizQuestions = [];
+        let quizIndex = 0;
+        let quizScore = 0;
+        let quizStreak = 0;
+        let maxQuizStreak = 0;
+        let quizAnswered = false;
+
+        // ==================== 3. 初始化與儲存 ====================
+        function initApp() {
+            // 載入主題設定
+            if (localStorage.getItem('lexiflow_theme') === 'dark' || 
+               (!localStorage.getItem('lexiflow_theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+
+            // 載入單字庫
+            const saved = localStorage.getItem('lexiflow_words');
+            if (saved) {
+                try {
+                    words = JSON.parse(saved);
+                } catch (e) {
+                    words = [...DEFAULT_WORDS];
+                }
+            } else {
+                words = [...DEFAULT_WORDS];
+                saveToStorage();
+            }
+
+            lucide.createIcons();
+            updateDashboard();
+            switchTab('flashcards');
+            setupKeyboardShortcuts();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('lexiflow_words', JSON.stringify(words));
+            updateDashboard();
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            html.classList.toggle('dark');
+            localStorage.setItem('lexiflow_theme', html.classList.contains('dark') ? 'dark' : 'light');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        // ==================== 4. 儀表板與導覽切換 ====================
+        function updateDashboard() {
+            const total = words.length;
+            const mastered = words.filter(w => w.mastered).length;
+            const review = total - mastered;
+            const rate = total === 0 ? 0 : Math.round((mastered / total) * 100);
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-mastered').textContent = mastered;
+            document.getElementById('stat-review').textContent = review;
+            document.getElementById('stat-rate').textContent = `${rate}%`;
+            document.getElementById('stat-progress-bar').style.width = `${rate}%`;
+        }
+
+        function switchTab(tabName) {
+            currentTab = tabName;
+            // 隱藏所有分頁
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+            // 更新桌面版導覽按鈕樣式
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'dark:bg-slate-800', 'text-indigo-600', 'dark:text-indigo-400', 'shadow-sm');
+                btn.classList.add('text-slate-600', 'dark:text-slate-400');
+            });
+            const activeNav = document.getElementById(`nav-${tabName}`);
+            if (activeNav) {
+                activeNav.classList.add('bg-white', 'dark:bg-slate-800', 'text-indigo-600', 'dark:text-indigo-400', 'shadow-sm');
+                activeNav.classList.remove('text-slate-600', 'dark:text-slate-400');
+            }
+
+            // 更新手機版導覽按鈕樣式
+            document.querySelectorAll('.mob-nav-btn').forEach(btn => {
+                btn.classList.remove('text-indigo-600', 'dark:text-indigo-400');
+                btn.classList.add('text-slate-500', 'dark:text-slate-400');
+            });
+            const activeMobNav = document.getElementById(`mob-nav-${tabName}`);
+            if (activeMobNav) {
+                activeMobNav.classList.add('text-indigo-600', 'dark:text-indigo-400');
+                activeMobNav.classList.remove('text-slate-500', 'dark:text-slate-400');
+            }
+
+            // 觸發各分頁初始化
+            if (tabName === 'flashcards') {
+                refreshFlashcardList();
+            } else if (tabName === 'manage') {
+                renderWordList();
+            } else if (tabName === 'quiz') {
+                resetQuizUI();
+            } else if (tabName === 'ai-practice') {
+                initAIPracticeTab();
+            }
+        }
+
+        // ==================== 5. Web Speech API 語音朗讀 ====================
+        function speakText(text) {
+            if (!('speechSynthesis' in window)) {
+                showToast('您的瀏覽器不支援語音朗讀功能');
+                return;
+            }
+            window.speechSynthesis.cancel(); // 停止先前的朗讀
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.92; // 稍微放慢語速更清晰
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function speakCurrentWord() {
+            if (fcList[fcIndex]) speakText(fcList[fcIndex].word);
+        }
+
+        function speakCurrentExample() {
+            if (fcList[fcIndex] && fcList[fcIndex].example) {
+                speakText(fcList[fcIndex].example);
+            }
+        }
+
+        function speakQuizWord() {
+            if (quizQuestions[quizIndex]) {
+                speakText(quizQuestions[quizIndex].word);
+            }
+        }
+
+        // ==================== 6. 單字卡學習模式邏輯 ====================
+        function setFlashcardFilter(filter) {
+            fcFilter = filter;
+            const btnAll = document.getElementById('filter-all');
+            const btnUnmastered = document.getElementById('filter-unmastered');
+
+            if (filter === 'all') {
+                btnAll.className = 'px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all bg-white dark:bg-slate-700 shadow-sm text-indigo-600 dark:text-indigo-400';
+                btnUnmastered.className = 'px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+            } else {
+                btnUnmastered.className = 'px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all bg-white dark:bg-slate-700 shadow-sm text-indigo-600 dark:text-indigo-400';
+                btnAll.className = 'px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+            }
+            refreshFlashcardList();
+        }
+
+        function refreshFlashcardList() {
+            fcList = fcFilter === 'all' ? [...words] : words.filter(w => !w.mastered);
+            fcIndex = 0;
+            isFlipped = false;
+            renderFlashcard();
+        }
+
+        function shuffleFlashcards() {
+            if (fcList.length <= 1) return;
+            for (let i = fcList.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [fcList[i], fcList[j]] = [fcList[j], fcList[i]];
+            }
+            fcIndex = 0;
+            isFlipped = false;
+            renderFlashcard();
+            showToast('已隨機洗牌單字順序');
+        }
+
+        function renderFlashcard() {
+            const container = document.getElementById('fc-container');
+            const emptyState = document.getElementById('fc-empty');
+            const counter = document.getElementById('fc-counter');
+
+            if (fcList.length === 0) {
+                container.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                counter.textContent = '0 / 0';
+                return;
+            }
+
+            container.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            counter.textContent = `${fcIndex + 1} / ${fcList.length}`;
+
+            const current = fcList[fcIndex];
+            const cardInner = document.getElementById('flashcard-inner');
+            
+            // 重置翻轉角度與 AI 抽屜
+            isFlipped = false;
+            cardInner.classList.remove('rotate-y-180');
+            closeCardAIDrawer();
+
+            // 填入資料
+            document.getElementById('fc-word').textContent = current.word;
+            document.getElementById('fc-word-back').textContent = current.word;
+            document.getElementById('fc-phonetic').textContent = current.phonetic || '';
+            document.getElementById('fc-pos').textContent = current.pos || '';
+            document.getElementById('fc-pos-back').textContent = current.pos || '';
+            document.getElementById('fc-meaning').textContent = current.meaning;
+            document.getElementById('fc-example').textContent = current.example ? `"${current.example}"` : '（無例句）';
+
+            // 顯示既有記憶秘訣 (若有)
+            const mnemonicBox = document.getElementById('fc-mnemonic-preview');
+            if (current.mnemonic) {
+                mnemonicBox.classList.remove('hidden');
+                document.getElementById('fc-mnemonic-text').textContent = current.mnemonic;
+            } else {
+                mnemonicBox.classList.add('hidden');
+            }
+
+            // 狀態標籤
+            const badge = document.getElementById('fc-badge-front');
+            if (current.mastered) {
+                badge.textContent = '已掌握';
+                badge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
+            } else {
+                badge.textContent = '需複習';
+                badge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+            }
+        }
+
+        function flipCard() {
+            if (fcList.length === 0) return;
+            isFlipped = !isFlipped;
+            const cardInner = document.getElementById('flashcard-inner');
+            if (isFlipped) {
+                cardInner.classList.add('rotate-y-180');
+            } else {
+                cardInner.classList.remove('rotate-y-180');
+            }
+        }
+
+        function nextCard() {
+            if (fcList.length === 0) return;
+            fcIndex = (fcIndex + 1) % fcList.length;
+            renderFlashcard();
+        }
+
+        function prevCard() {
+            if (fcList.length === 0) return;
+            fcIndex = (fcIndex - 1 + fcList.length) % fcList.length;
+            renderFlashcard();
+        }
+
+        function markWordStatus(isMastered) {
+            if (fcList.length === 0) return;
+            const currentWordObj = fcList[fcIndex];
+            
+            // 更新主資料庫
+            const target = words.find(w => w.id === currentWordObj.id);
+            if (target) {
+                target.mastered = isMastered;
+                saveToStorage();
+            }
+
+            showToast(isMastered ? '已標記為「已掌握」' : '已標記為「需複習」');
+
+            // 如果目前在「僅複習不熟單字」模式下標記為已掌握，將該卡片移出當前列表
+            if (fcFilter === 'unmastered' && isMastered) {
+                fcList.splice(fcIndex, 1);
+                if (fcIndex >= fcList.length) fcIndex = 0;
+                renderFlashcard();
+            } else {
+                nextCard();
+            }
+        }
+
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // 避免在輸入框打字時觸發快捷鍵
+                if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+                    if (e.key === 'Enter' && currentTab === 'quiz' && quizType === 'spelling') {
+                        if (!quizAnswered) checkSpellingAnswer();
+                        else nextQuizQuestion();
+                    }
+                    return;
+                }
+
+                if (currentTab === 'flashcards') {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        flipCard();
+                    } else if (e.code === 'ArrowRight') {
+                        nextCard();
+                    } else if (e.code === 'ArrowLeft') {
+                        prevCard();
+                    }
+                }
+            });
+        }
+
+        // ==================== 7. 小測驗模式邏輯 ====================
+        function selectQuizType(type) {
+            quizType = type;
+            document.querySelectorAll('.qtype-btn').forEach(btn => {
+                btn.classList.remove('border-indigo-600', 'bg-indigo-50/50', 'dark:bg-indigo-900/20');
+                btn.classList.add('border-slate-200', 'dark:border-slate-700');
+                btn.querySelector('div:first-child').classList.remove('text-indigo-600', 'dark:text-indigo-400');
+                btn.querySelector('div:first-child').classList.add('text-slate-800', 'dark:text-slate-200');
+            });
+
+            const activeBtn = document.getElementById(`qtype-${type}`);
+            activeBtn.classList.add('border-indigo-600', 'bg-indigo-50/50', 'dark:bg-indigo-900/20');
+            activeBtn.classList.remove('border-slate-200', 'dark:border-slate-700');
+            activeBtn.querySelector('div:first-child').classList.add('text-indigo-600', 'dark:text-indigo-400');
+            activeBtn.querySelector('div:first-child').classList.remove('text-slate-800', 'dark:text-slate-200');
+        }
+
+        function resetQuizUI() {
+            document.getElementById('quiz-setup').classList.remove('hidden');
+            document.getElementById('quiz-active').classList.add('hidden');
+            document.getElementById('quiz-result').classList.add('hidden');
+        }
+
+        function startQuiz() {
+            const scope = document.getElementById('quiz-scope').value;
+            let pool = scope === 'all' ? [...words] : words.filter(w => !w.mastered);
+
+            if (pool.length < 4 && quizType !== 'spelling') {
+                showToast('單字庫數量不足 4 個，無法進行選擇題測驗，請先新增單字！');
+                return;
+            }
+            if (pool.length === 0) {
+                showToast('沒有符合條件的單字可進行測驗！');
+                return;
+            }
+
+            // 隨機抽選最多 10 題
+            pool.sort(() => Math.random() - 0.5);
+            quizQuestions = pool.slice(0, 10);
+            quizIndex = 0;
+            quizScore = 0;
+            quizStreak = 0;
+            maxQuizStreak = 0;
+
+            document.getElementById('quiz-setup').classList.add('hidden');
+            document.getElementById('quiz-result').classList.add('hidden');
+            document.getElementById('quiz-active').classList.remove('hidden');
+
+            renderQuizQuestion();
+        }
+
+        function quitQuiz() {
+            resetQuizUI();
+        }
+
+        function renderQuizQuestion() {
+            quizAnswered = false;
+            const current = quizQuestions[quizIndex];
+            
+            document.getElementById('quiz-progress-text').textContent = `第 ${quizIndex + 1} / ${quizQuestions.length} 題`;
+            document.getElementById('quiz-next-container').classList.add('hidden');
+
+            // 連對顯示
+            const streakBadge = document.getElementById('quiz-streak-badge');
+            if (quizStreak >= 2) {
+                streakBadge.classList.remove('hidden');
+                document.getElementById('quiz-streak').textContent = quizStreak;
+            } else {
+                streakBadge.classList.add('hidden');
+            }
+
+            const optionsContainer = document.getElementById('quiz-options-container');
+            const spellingContainer = document.getElementById('quiz-spelling-container');
+            const audioBtn = document.getElementById('quiz-audio-btn');
+
+            if (quizType === 'en-to-zh') {
+                document.getElementById('quiz-prompt-label').textContent = '請選出正確的中文釋義';
+                document.getElementById('quiz-question').textContent = current.word;
+                document.getElementById('quiz-sub-hint').textContent = current.phonetic || '';
+                audioBtn.classList.remove('hidden');
+                
+                optionsContainer.classList.remove('hidden');
+                spellingContainer.classList.add('hidden');
+                generateMultipleChoice(current, 'meaning');
+                speakText(current.word);
+
+            } else if (quizType === 'zh-to-en') {
+                document.getElementById('quiz-prompt-label').textContent = '請選出對應的英文單字';
+                document.getElementById('quiz-question').textContent = current.meaning;
+                document.getElementById('quiz-sub-hint').textContent = current.pos ? `詞性：${current.pos}` : '';
+                audioBtn.classList.add('hidden');
+
+                optionsContainer.classList.remove('hidden');
+                spellingContainer.classList.add('hidden');
+                generateMultipleChoice(current, 'word');
+
+            } else if (quizType === 'spelling') {
+                document.getElementById('quiz-prompt-label').textContent = '請根據中文提示與發音拼出單字';
+                document.getElementById('quiz-question').textContent = current.meaning;
+                document.getElementById('quiz-sub-hint').textContent = `${current.pos || ''} ${current.phonetic || ''}`;
+                audioBtn.classList.remove('hidden');
+
+                optionsContainer.classList.add('hidden');
+                spellingContainer.classList.remove('hidden');
+
+                const input = document.getElementById('quiz-spelling-input');
+                input.value = '';
+                input.disabled = false;
+                input.className = 'w-full text-center text-2xl font-bold tracking-wider py-4 px-6 rounded-2xl border-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:border-indigo-500 focus:outline-none transition-colors';
+                document.getElementById('quiz-spelling-feedback').classList.add('hidden');
+                document.getElementById('quiz-spelling-submit').classList.remove('hidden');
+                
+                setTimeout(() => input.focus(), 100);
+                speakText(current.word);
+            }
+        }
+
+        function generateMultipleChoice(correctObj, field) {
+            const container = document.getElementById('quiz-options-container');
+            container.innerHTML = '';
+
+            // 取得 3 個干擾選項
+            const distractors = words
+                .filter(w => w.id !== correctObj.id)
+                .sort(() => Math.random() - 0.5)
+                .slice(0, 3);
+
+            const choices = [correctObj, ...distractors].sort(() => Math.random() - 0.5);
+
+            choices.forEach(choice => {
+                const btn = document.createElement('button');
+                btn.className = 'quiz-opt-btn w-full p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 text-left font-medium text-slate-800 dark:text-slate-100 transition-all flex items-center justify-between';
+                btn.innerHTML = `<span>${choice[field]}</span>`;
+                btn.onclick = () => handleChoiceAnswer(btn, choice.id === correctObj.id, correctObj);
+                container.appendChild(btn);
+            });
+        }
+
+        function handleChoiceAnswer(selectedBtn, isCorrect, correctObj) {
+            if (quizAnswered) return;
+            quizAnswered = true;
+
+            const allBtns = document.querySelectorAll('.quiz-opt-btn');
+            allBtns.forEach(b => b.disabled = true);
+
+            if (isCorrect) {
+                selectedBtn.classList.remove('border-slate-200', 'dark:border-slate-700');
+                selectedBtn.classList.add('border-emerald-500', 'bg-emerald-50', 'dark:bg-emerald-900/30', 'text-emerald-700', 'dark:text-emerald-300');
+                selectedBtn.innerHTML += `<i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500"></i>`;
+                quizScore++;
+                quizStreak++;
+                if (quizStreak > maxQuizStreak) maxQuizStreak = quizStreak;
+            } else {
+                selectedBtn.classList.remove('border-slate-200', 'dark:border-slate-700');
+                selectedBtn.classList.add('border-rose-500', 'bg-rose-50', 'dark:bg-rose-900/30', 'text-rose-700', 'dark:text-rose-300', 'animate-shake');
+                selectedBtn.innerHTML += `<i data-lucide="x-circle" class="w-5 h-5 text-rose-500"></i>`;
+                quizStreak = 0;
+
+                // 標示出正確答案
+                const targetText = quizType === 'en-to-zh' ? correctObj.meaning : correctObj.word;
+                allBtns.forEach(b => {
+                    if (b.textContent.trim() === targetText) {
+                        b.classList.remove('border-slate-200', 'dark:border-slate-700');
+                        b.classList.add('border-emerald-500', 'bg-emerald-50/50', 'dark:bg-emerald-900/20');
+                    }
+                });
+            }
+
+            if (quizType === 'zh-to-en') speakText(correctObj.word);
+            lucide.createIcons();
+            document.getElementById('quiz-next-container').classList.remove('hidden');
+        }
+
+        function checkSpellingAnswer() {
+            if (quizAnswered) return;
+            const input = document.getElementById('quiz-spelling-input');
+            const userVal = input.value.trim();
+            if (!userVal) return;
+
+            quizAnswered = true;
+            input.disabled = true;
+            document.getElementById('quiz-spelling-submit').classList.add('hidden');
+
+            const current = quizQuestions[quizIndex];
+            const isCorrect = userVal.toLowerCase() === current.word.toLowerCase();
+            const feedback = document.getElementById('quiz-spelling-feedback');
+            feedback.classList.remove('hidden');
+
+            if (isCorrect) {
+                input.classList.add('border-emerald-500', 'text-emerald-600', 'dark:text-emerald-400');
+                feedback.className = 'mt-4 p-4 rounded-2xl text-center bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold';
+                feedback.textContent = '🎉 拼寫完全正確！';
+                quizScore++;
+                quizStreak++;
+                if (quizStreak > maxQuizStreak) maxQuizStreak = quizStreak;
+            } else {
+                input.classList.add('border-rose-500', 'text-rose-600', 'dark:text-rose-400', 'animate-shake');
+                feedback.className = 'mt-4 p-4 rounded-2xl text-center bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300';
+                feedback.innerHTML = `正確拼法為：<span class="font-bold text-lg underline ml-1">${current.word}</span>`;
+                quizStreak = 0;
+            }
+
+            speakText(current.word);
+            document.getElementById('quiz-next-container').classList.remove('hidden');
+        }
+
+        function nextQuizQuestion() {
+            quizIndex++;
+            if (quizIndex < quizQuestions.length) {
+                renderQuizQuestion();
+            } else {
+                showQuizResult();
+            }
+        }
+
+        function showQuizResult() {
+            document.getElementById('quiz-active').classList.add('hidden');
+            document.getElementById('quiz-result').classList.remove('hidden');
+
+            const percentage = Math.round((quizScore / quizQuestions.length) * 100);
+            document.getElementById('res-score').textContent = `${percentage}%`;
+            document.getElementById('res-correct').textContent = `${quizScore} / ${quizQuestions.length}`;
+            document.getElementById('res-streak').textContent = maxQuizStreak;
+        }
+
+        // ==================== 8. 單字庫管理邏輯 ====================
+        function renderWordList() {
+            const container = document.getElementById('word-list-container');
+            const query = document.getElementById('manage-search').value.toLowerCase().trim();
+            
+            const filtered = words.filter(w => 
+                w.word.toLowerCase().includes(query) || 
+                w.meaning.toLowerCase().includes(query)
+            );
+
+            container.innerHTML = '';
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-slate-400">
+                        找不到符合「${query}」的單字
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between hover:shadow-md transition-shadow';
+                
+                const statusBadge = item.mastered 
+                    ? `<button onclick="toggleWordMastery('${item.id}')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 hover:opacity-80">已掌握</button>`
+                    : `<button onclick="toggleWordMastery('${item.id}')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 hover:opacity-80">需複習</button>`;
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h4 class="text-lg font-bold text-slate-900 dark:text-white">${item.word}</h4>
+                                <span class="text-xs font-mono text-slate-400">${item.phonetic || ''}</span>
+                                <span class="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">${item.pos || ''}</span>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                        <p class="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">${item.meaning}</p>
+                        ${item.example ? `<p class="text-xs text-slate-500 dark:text-slate-400 italic line-clamp-2">"${item.example}"</p>` : ''}
+                    </div>
+                    <div class="flex items-center justify-end gap-1 mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60">
+                        <button onclick="speakText('${item.word.replace(/'/g, "\\'")}')" class="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700" title="發音">
+                            <i data-lucide="volume-2" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="openWordModal('${item.id}')" class="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700" title="編輯">
+                            <i data-lucide="pencil" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="deleteWord('${item.id}')" class="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30" title="刪除">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        function toggleWordMastery(id) {
+            const target = words.find(w => w.id === id);
+            if (target) {
+                target.mastered = !target.mastered;
+                saveToStorage();
+                renderWordList();
+            }
+        }
+
+        function deleteWord(id) {
+            words = words.filter(w => w.id !== id);
+            saveToStorage();
+            renderWordList();
+            showToast('已刪除該單字');
+        }
+
+        // 新增/編輯 Modal 控制
+        function openWordModal(id = null) {
+            const modal = document.getElementById('word-modal');
+            const title = document.getElementById('modal-title');
+            const form = document.getElementById('word-form');
+            form.reset();
+
+            if (id) {
+                const target = words.find(w => w.id === id);
+                if (!target) return;
+                title.textContent = '編輯單字';
+                document.getElementById('edit-word-id').value = target.id;
+                document.getElementById('input-word').value = target.word;
+                document.getElementById('input-pos').value = target.pos || 'n.';
+                document.getElementById('input-phonetic').value = target.phonetic || '';
+                document.getElementById('input-meaning').value = target.meaning;
+                document.getElementById('input-example').value = target.example || '';
+                document.getElementById('input-mnemonic').value = target.mnemonic || '';
+            } else {
+                title.textContent = '新增單字';
+                document.getElementById('edit-word-id').value = '';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeWordModal() {
+            document.getElementById('word-modal').classList.add('hidden');
+        }
+
+        function saveWord(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-word-id').value;
+            const wordData = {
+                word: document.getElementById('input-word').value.trim(),
+                pos: document.getElementById('input-pos').value,
+                phonetic: document.getElementById('input-phonetic').value.trim(),
+                meaning: document.getElementById('input-meaning').value.trim(),
+                example: document.getElementById('input-example').value.trim(),
+                mnemonic: document.getElementById('input-mnemonic').value.trim(),
+            };
+
+            if (id) {
+                const index = words.findIndex(w => w.id === id);
+                if (index !== -1) {
+                    words[index] = { ...words[index], ...wordData };
+                    showToast('單字已更新');
+                }
+            } else {
+                words.unshift({
+                    id: Date.now().toString(),
+                    ...wordData,
+                    mastered: false
+                });
+                showToast('已新增單字至單字庫');
+            }
+
+            saveToStorage();
+            closeWordModal();
+            renderWordList();
+        }
+
+        // 批次匯入 Modal 控制
+        function openBatchModal() {
+            document.getElementById('batch-input').value = '';
+            document.getElementById('batch-modal').classList.remove('hidden');
+        }
+
+        function closeBatchModal() {
+            document.getElementById('batch-modal').classList.add('hidden');
+        }
+
+        function processBatchImport() {
+            const raw = document.getElementById('batch-input').value.trim();
+            if (!raw) {
+                showToast('請輸入要匯入的內容');
+                return;
+            }
+
+            const lines = raw.split('\n');
+            let addedCount = 0;
+
+            lines.forEach((line, idx) => {
+                const parts = line.split('|').map(p => p.trim());
+                if (parts.length >= 2 && parts[0] && parts[1]) {
+                    words.unshift({
+                        id: `${Date.now()}-${idx}`,
+                        word: parts[0],
+                        meaning: parts[1],
+                        example: parts[2] || '',
+                        pos: '',
+                        phonetic: '',
+                        mastered: false
+                    });
+                    addedCount++;
+                }
+            });
+
+            if (addedCount > 0) {
+                saveToStorage();
+                renderWordList();
+                closeBatchModal();
+                showToast(`成功匯入 ${addedCount} 個單字！`);
+            } else {
+                showToast('格式不符，請確認每行皆包含「單字 | 中文釋義」');
+            }
+        }
+
+        // ==================== 9. Gemini AI 智慧功能實作 ====================
+
+        // (A) AI 自動補全單字資訊
+        async function autoFillWordWithAI() {
+            const wordInput = document.getElementById('input-word');
+            const word = wordInput.value.trim();
+            if (!word) {
+                showToast('請先輸入英文單字！');
+                wordInput.focus();
+                return;
+            }
+
+            const btn = document.getElementById('btn-ai-autofill');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span> 生成中...`;
+
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    pos: { type: "STRING", description: "Part of speech abbreviation: n., v., adj., adv., or phr." },
+                    phonetic: { type: "STRING", description: "IPA phonetic transcription enclosed in slashes, e.g. /rɪˈzɪl.jənt/" },
+                    meaning: { type: "STRING", description: "Concise Traditional Chinese (繁體中文) definition" },
+                    example: { type: "STRING", description: "Natural English example sentence followed by Traditional Chinese translation in parentheses" },
+                    mnemonic: { type: "STRING", description: "Clever Traditional Chinese memory mnemonic (諧音或字根字首聯想記憶法)" }
+                },
+                required: ["pos", "phonetic", "meaning", "example", "mnemonic"]
+            };
+
+            try {
+                const prompt = `請為英文單字 "${word}" 生成完整的學習卡片資料，所有中文說明請務必使用台灣習慣的繁體中文。`;
+                const data = await callGeminiAPI(prompt, "你是一位專業且風趣的台灣英文老師，擅長用精準的繁體中文解釋單字並提供記憶技巧。", schema);
+
+                const posSelect = document.getElementById('input-pos');
+                const validPos = ['n.', 'v.', 'adj.', 'adv.', 'phr.'];
+                posSelect.value = validPos.includes(data.pos) ? data.pos : 'n.';
+
+                document.getElementById('input-phonetic').value = data.phonetic || '';
+                document.getElementById('input-meaning').value = data.meaning || '';
+                document.getElementById('input-example').value = data.example || '';
+                document.getElementById('input-mnemonic').value = data.mnemonic || '';
+                showToast('✨ AI 已自動補全單字資訊！');
+            } catch (error) {
+                showToast('AI 生成失敗，請稍後再試');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+                lucide.createIcons();
+            }
+        }
+
+        // (B) AI 主題生字包生成器
+        let generatedTopicWords = [];
+
+        function openTopicPackModal() {
+            document.getElementById('topic-pack-modal').classList.remove('hidden');
+            document.getElementById('topic-preview-container').classList.add('hidden');
+            document.getElementById('btn-import-topic').classList.add('hidden');
+            generatedTopicWords = [];
+        }
+
+        function closeTopicPackModal() {
+            document.getElementById('topic-pack-modal').classList.add('hidden');
+        }
+
+        function setTopicPreset(topic) {
+            document.getElementById('topic-input').value = topic;
+        }
+
+        async function generateTopicPack() {
+            const topic = document.getElementById('topic-input').value.trim();
+            const count = parseInt(document.getElementById('topic-count').value, 10) || 5;
+            if (!topic) {
+                showToast('請輸入想要學習的主題或程度！');
+                return;
+            }
+
+            const btn = document.getElementById('btn-gen-topic');
+            const loading = document.getElementById('topic-loading');
+            const preview = document.getElementById('topic-preview-container');
+            const importBtn = document.getElementById('btn-import-topic');
+
+            btn.disabled = true;
+            loading.classList.remove('hidden');
+            preview.classList.add('hidden');
+            importBtn.classList.add('hidden');
+
+            const schema = {
+                type: "ARRAY",
+                items: {
+                    type: "OBJECT",
+                    properties: {
+                        word: { type: "STRING" },
+                        pos: { type: "STRING", description: "n., v., adj., adv., or phr." },
+                        phonetic: { type: "STRING" },
+                        meaning: { type: "STRING", description: "Traditional Chinese definition" },
+                        example: { type: "STRING", description: "English example sentence with Traditional Chinese translation" },
+                        mnemonic: { type: "STRING", description: "Short memory tip in Traditional Chinese" }
+                    },
+                    required: ["word", "pos", "phonetic", "meaning", "example", "mnemonic"]
+                }
+            };
+
+            try {
+                const prompt = `請針對主題「${topic}」，精選 ${count} 個最實用、道地的英文單字或片語。請確保不與常見過於基礎的單字重複，並提供繁體中文釋義、音標、例句與記憶秘訣。`;
+                const list = await callGeminiAPI(prompt, "你是專業英語教材編輯，請回傳結構化的 JSON 單字列表，中文請使用繁體中文。", schema);
+
+                generatedTopicWords = list;
+                preview.innerHTML = '';
+                list.forEach((item) => {
+                    const el = document.createElement('div');
+                    el.className = 'p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-700/40 border border-slate-200/80 dark:border-slate-700';
+                    el.innerHTML = `
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="font-bold text-indigo-600 dark:text-indigo-400">${item.word}</span>
+                            <span class="text-xs font-mono text-slate-400">${item.phonetic}</span>
+                            <span class="text-xs px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300">${item.pos}</span>
+                            <span class="text-sm font-semibold text-slate-800 dark:text-slate-100 ml-auto">${item.meaning}</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-300 italic">${item.example}</p>
+                    `;
+                    preview.appendChild(el);
+                });
+
+                document.getElementById('topic-gen-count').textContent = list.length;
+                preview.classList.remove('hidden');
+                importBtn.classList.remove('hidden');
+                lucide.createIcons();
+            } catch (err) {
+                showToast('生成主題生字包失敗，請稍後再試');
+            } finally {
+                btn.disabled = false;
+                loading.classList.add('hidden');
+            }
+        }
+
+        function importGeneratedTopicPack() {
+            if (generatedTopicWords.length === 0) return;
+            generatedTopicWords.forEach((item, idx) => {
+                words.unshift({
+                    id: `${Date.now()}-ai-${idx}`,
+                    word: item.word,
+                    pos: item.pos || 'n.',
+                    phonetic: item.phonetic || '',
+                    meaning: item.meaning,
+                    example: item.example || '',
+                    mnemonic: item.mnemonic || '',
+                    mastered: false
+                });
+            });
+            saveToStorage();
+            renderWordList();
+            closeTopicPackModal();
+            showToast(`✨ 已成功將 ${generatedTopicWords.length} 個 AI 主題單字加入單字庫！`);
+        }
+
+        // (C) 單字卡 AI 深度解析與記憶教練 (含 localStorage 快取)
+        function closeCardAIDrawer() {
+            document.getElementById('fc-ai-drawer').classList.add('hidden');
+        }
+
+        async function triggerCardAIDeepDive() {
+            if (fcList.length === 0) return;
+            const current = fcList[fcIndex];
+            const drawer = document.getElementById('fc-ai-drawer');
+            const contentBox = document.getElementById('fc-ai-content');
+
+            drawer.classList.remove('hidden');
+
+            // 檢查是否已有快取
+            if (current.aiDeepDive) {
+                renderCardAIDeepDive(current.aiDeepDive);
+                return;
+            }
+
+            contentBox.innerHTML = `
+                <div class="flex items-center gap-3 py-4 text-slate-500 dark:text-slate-400">
+                    <span class="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></span>
+                    <span>Gemini 正在為「${current.word}」拆解字根與聯想記憶法...</span>
+                </div>
+            `;
+
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    mnemonic: { type: "STRING", description: "Clever mnemonic or etymology breakdown in Traditional Chinese" },
+                    collocations: { type: "ARRAY", items: { type: "STRING" }, description: "3 common English collocations with Traditional Chinese translations" },
+                    synonyms: { type: "STRING", description: "Synonyms, antonyms, and subtle nuance comparison in Traditional Chinese" }
+                },
+                required: ["mnemonic", "collocations", "synonyms"]
+            };
+
+            try {
+                const prompt = `請針對英文單字 "${current.word}"（意思：${current.meaning}），提供深度記憶輔助：1. 諧音或字根字首聯想記憶法 2. 3個最道地的常見搭配詞 (Collocations) 3. 同義詞、反義詞與細微語意差異比較。請全數使用繁體中文說明。`;
+                const aiData = await callGeminiAPI(prompt, "你是頂尖英文詞彙記憶專家，善於用生動易懂的繁體中文幫助學習者永久記住單字。", schema);
+
+                // 快取回主資料庫與 localStorage
+                const target = words.find(w => w.id === current.id);
+                if (target) {
+                    target.aiDeepDive = aiData;
+                    if (!target.mnemonic) target.mnemonic = aiData.mnemonic;
+                    saveToStorage();
+                }
+                current.aiDeepDive = aiData;
+
+                renderCardAIDeepDive(aiData);
+            } catch (err) {
+                contentBox.innerHTML = `<p class="text-rose-500 text-sm">載入 AI 解析失敗，請檢查網路連線後重試。</p>`;
+            }
+        }
+
+        function renderCardAIDeepDive(data) {
+            const contentBox = document.getElementById('fc-ai-content');
+            const collocationsHTML = (data.collocations || [])
+                .map(c => `<span class="inline-block px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-medium">${c}</span>`)
+                .join(' ');
+
+            contentBox.innerHTML = `
+                <div class="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/40">
+                    <div class="text-xs font-bold text-amber-700 dark:text-amber-400 mb-1">💡 聯想與字根記憶法</div>
+                    <p class="text-slate-700 dark:text-slate-200">${data.mnemonic}</p>
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">🔗 常見搭配詞 (Collocations)</div>
+                    <div class="flex flex-wrap gap-1.5">${collocationsHTML}</div>
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">⚖️ 同反義詞與語意比較</div>
+                    <p class="text-slate-700 dark:text-slate-200">${data.synonyms}</p>
+                </div>
+            `;
+        }
+
+        // (D) AI 實戰練習分頁：串燒故事 & 造句教練
+        let currentStoryEnText = "";
+        let currentCoachWordObj = null;
+
+        function initAIPracticeTab() {
+            if (!currentCoachWordObj && words.length > 0) {
+                pickRandomCoachWord();
+            }
+        }
+
+        async function generateAIStory() {
+            if (words.length === 0) {
+                showToast('單字庫目前是空的，請先新增單字！');
+                return;
+            }
+
+            // 優先挑選「需複習」的單字，不足再從已掌握單字補足至 6 個
+            const unmastered = words.filter(w => !w.mastered).sort(() => Math.random() - 0.5);
+            const mastered = words.filter(w => w.mastered).sort(() => Math.random() - 0.5);
+            const selected = [...unmastered, ...mastered].slice(0, Math.min(6, words.length));
+
+            const btn = document.getElementById('btn-gen-story');
+            const loading = document.getElementById('story-loading');
+            const resultBox = document.getElementById('story-result-box');
+            const targetBox = document.getElementById('story-target-words');
+
+            btn.disabled = true;
+            loading.classList.remove('hidden');
+            resultBox.classList.add('hidden');
+
+            // 顯示目標單字標籤
+            targetBox.classList.remove('hidden');
+            targetBox.innerHTML = `<span class="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1">本篇包含單字：</span>` +
+                selected.map(w => `<span class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-xs font-bold text-indigo-600 dark:text-indigo-400">${w.word} <span class="font-normal text-slate-500">(${w.meaning.split('；')[0]})</span></span>`).join('');
+
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    title: { type: "STRING", description: "Catchy English story title" },
+                    story_en: { type: "STRING", description: "Engaging short English story (around 100-140 words) naturally incorporating all target words. Wrap target words in **double asterisks** like **word**." },
+                    story_zh: { type: "STRING", description: "Natural Traditional Chinese translation of the story" }
+                },
+                required: ["title", "story_en", "story_zh"]
+            };
+
+            try {
+                const wordListStr = selected.map(w => `${w.word} (${w.meaning})`).join(', ');
+                const prompt = `請使用以下這些英文單字編寫一篇生動有趣、情節連貫的英文短文（約 100-140 字），並在英文短文中將這些目標單字用 **粗體** 標示出來，同時附上流暢的繁體中文翻譯：\n目標單字：${wordListStr}`;
+                const res = await callGeminiAPI(prompt, "你是擅長寫作英語學習故事的作家，文章自然道地且富有畫面感。", schema);
+
+                currentStoryEnText = res.story_en.replace(/\*\*/g, '');
+                document.getElementById('story-title').textContent = res.title;
+                
+                // 將 **word** 轉換為高亮樣式
+                const highlightedEn = res.story_en.replace(/\*\*(.*?)\*\*/g, '<span class="px-1.5 py-0.5 mx-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold">$1</span>');
+                document.getElementById('story-en-content').innerHTML = highlightedEn;
+                document.getElementById('story-zh-content').textContent = res.story_zh;
+                document.getElementById('story-zh-box').classList.add('hidden');
+
+                resultBox.classList.remove('hidden');
+            } catch (err) {
+                showToast('故事生成失敗，請稍後再試');
+            } finally {
+                btn.disabled = false;
+                loading.classList.add('hidden');
+            }
+        }
+
+        function speakStory() {
+            if (currentStoryEnText) speakText(currentStoryEnText);
+        }
+
+        function toggleStoryTranslation() {
+            document.getElementById('story-zh-box').classList.toggle('hidden');
+        }
+
+        // 造句教練功能
+        function pickRandomCoachWord() {
+            if (words.length === 0) return;
+            const unmastered = words.filter(w => !w.mastered);
+            const pool = unmastered.length > 0 ? unmastered : words;
+            currentCoachWordObj = pool[Math.floor(Math.random() * pool.length)];
+
+            document.getElementById('coach-word').textContent = currentCoachWordObj.word;
+            document.getElementById('coach-pos').textContent = currentCoachWordObj.pos || '';
+            document.getElementById('coach-meaning').textContent = currentCoachWordObj.meaning;
+            document.getElementById('coach-input').value = '';
+            document.getElementById('coach-feedback-box').classList.add('hidden');
+        }
+
+        function speakCoachWord() {
+            if (currentCoachWordObj) speakText(currentCoachWordObj.word);
+        }
+
+        async function evaluateSentence() {
+            if (!currentCoachWordObj) return;
+            const userSentence = document.getElementById('coach-input').value.trim();
+            if (!userSentence) {
+                showToast('請先輸入您的英文造句！');
+                return;
+            }
+
+            const btn = document.getElementById('btn-eval-sentence');
+            const loading = document.getElementById('coach-loading');
+            const feedbackBox = document.getElementById('coach-feedback-box');
+
+            btn.disabled = true;
+            loading.classList.remove('hidden');
+            feedbackBox.classList.add('hidden');
+
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    score: { type: "INTEGER", description: "Score from 1 to 100 based on grammar, word usage accuracy, and naturalness" },
+                    is_correct: { type: "BOOLEAN", description: "Whether the target word is used correctly and grammatically" },
+                    critique: { type: "STRING", description: "Detailed, encouraging feedback in Traditional Chinese explaining grammar or word usage issues" },
+                    corrected_sentence: { type: "STRING", description: "Polished, grammatically correct version of the user's sentence" },
+                    native_upgrade: { type: "STRING", description: "An advanced, native-sounding alternative sentence using the target word, with Traditional Chinese translation" }
+                },
+                required: ["score", "is_correct", "critique", "corrected_sentence", "native_upgrade"]
+            };
+
+            try {
+                const prompt = `目標單字：「${currentCoachWordObj.word}」（${currentCoachWordObj.meaning}）\n學生的造句：「${userSentence}」\n請以台灣英文老師的角度，用繁體中文批改這個造句，檢查單字用法是否正確、文法是否有誤，並提供修正句與母語人士進階替換句。`;
+                const res = await callGeminiAPI(prompt, "你是親切且專業的英語寫作教練，擅長用繁體中文給出具體且具建設性的造句回饋。", schema);
+
+                const badgeColor = res.score >= 80
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+
+                feedbackBox.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <span class="px-3 py-1 rounded-xl text-sm font-bold ${badgeColor}">得分：${res.score} 分</span>
+                            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">${res.is_correct ? '✅ 單字運用正確' : '⚠️ 用法或文法可再調整'}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-400 uppercase mb-1">老師點評</div>
+                        <p class="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">${res.critique}</p>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400">✨ 修正與潤飾版</span>
+                            <button onclick="speakText('${res.corrected_sentence.replace(/'/g, "\\'")}')" class="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1">
+                                <i data-lucide="volume-2" class="w-3.5 h-3.5"></i> 朗讀
+                            </button>
+                        </div>
+                        <p class="text-sm font-medium text-slate-900 dark:text-white">${res.corrected_sentence}</p>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-900/20 border border-indigo-200/60 dark:border-indigo-800/40">
+                        <div class="text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">🚀 母語人士進階例句</div>
+                        <p class="text-sm text-slate-800 dark:text-slate-100">${res.native_upgrade}</p>
+                    </div>
+                `;
+
+                feedbackBox.classList.remove('hidden');
+                lucide.createIcons();
+            } catch (err) {
+                showToast('批改失敗，請稍後再試');
+            } finally {
+                btn.disabled = false;
+                loading.classList.add('hidden');
+            }
+        }
+
+        // 啟動應用程式
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
